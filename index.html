@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Procesorul – cartea AR</title>
+
+  <!-- Biblioteci AR (nu le modificați) -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.2.0/dist/aframe-extras.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --placa: #16553e;      /* verdele plăcii de bază */
+      --placa-inchis: #0d3a2a;
+      --cupru: #c98a3e;      /* traseele de cupru */
+      --aur: #f0c04a;        /* contactele aurii */
+      --serigrafie: #f7f5e8; /* scrisul alb de pe placă */
+    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    body { font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif; }
+
+    /* ---------- Ecranul de pornire ---------- */
+    #ecran-start {
+      position: fixed; inset: 0; z-index: 10;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1.25rem; padding: 2rem 1.5rem; text-align: center;
+      color: var(--serigrafie);
+      background:
+        repeating-linear-gradient(90deg, transparent 0 46px, rgba(201,138,62,.18) 46px 48px),
+        repeating-linear-gradient(0deg, transparent 0 62px, rgba(201,138,62,.12) 62px 64px),
+        radial-gradient(circle at 50% 38%, var(--placa), var(--placa-inchis));
+    }
+    .cip { width: 132px; height: 132px; }
+    .cip .ochi { transform-origin: center; animation: clipeste 4s infinite; }
+    @keyframes clipeste { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
+    h1 { margin: 0; font-size: 2.6rem; font-weight: 800; line-height: 1; letter-spacing: .01em; }
+    #ecran-start p { margin: 0; max-width: 22rem; font-size: 1.15rem; line-height: 1.4; opacity: .92; }
+    .buton {
+      font: inherit; font-weight: 700; font-size: 1.3rem;
+      color: var(--placa-inchis); background: var(--aur);
+      border: 0; border-radius: 999px; padding: .85rem 2.2rem; cursor: pointer;
+      box-shadow: 0 5px 0 #a8801f;
+    }
+    .buton:active { transform: translateY(4px); box-shadow: 0 1px 0 #a8801f; }
+    .buton:focus-visible { outline: 3px solid var(--serigrafie); outline-offset: 4px; }
+    #mesaj-eroare { display: none; color: #ffd9d0; font-size: 1rem; max-width: 22rem; }
+
+    /* ---------- Butonul din timpul AR ---------- */
+    #repeta {
+      position: fixed; z-index: 5; left: 50%; transform: translateX(-50%);
+      bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+      display: none; font-size: 1.05rem; padding: .6rem 1.4rem;
+    }
+    #repeta:active { transform: translateX(-50%) translateY(4px); }
+
+    @media (prefers-reduced-motion: reduce) { .cip .ochi { animation: none; } }
+  </style>
+</head>
+<body>
+
+  <!-- Ecranul de start: telefoanele cer o atingere înainte să permită sunet -->
+  <div id="ecran-start">
+    <svg class="cip" viewBox="0 0 120 120" aria-hidden="true">
+      <g stroke="#f0c04a" stroke-width="5" stroke-linecap="round">
+        <path d="M35 8v14M52 8v14M68 8v14M85 8v14M35 98v14M52 98v14M68 98v14M85 98v14M8 35h14M8 52h14M8 68h14M8 85h14M98 35h14M98 52h14M98 68h14M98 85h14"/>
+      </g>
+      <rect x="22" y="22" width="76" height="76" rx="10" fill="#c9ced6" stroke="#8b93a0" stroke-width="3"/>
+      <rect x="34" y="34" width="52" height="52" rx="6" fill="#dfe3e8"/>
+      <g class="ochi" fill="#0d3a2a"><circle cx="49" cy="55" r="5"/><circle cx="71" cy="55" r="5"/></g>
+      <path d="M50 69q10 8 20 0" fill="none" stroke="#0d3a2a" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <h1>Procesorul</h1>
+    <p>Pune cartea pe masă, deschide la pagina cu procesorul și îndreaptă camera spre imagine.</p>
+    <button id="start" class="buton">Pornește camera</button>
+    <p id="mesaj-eroare">Camera nu a pornit. Permite accesul la cameră din setările browserului, apoi reîncarcă pagina.</p>
+  </div>
+
+  <button id="repeta" class="buton">Ascultă din nou</button>
+
+  <!-- Vocea procesorului (stă în afara scenei ca să nu blocheze încărcarea pe iPhone) -->
+  <audio id="voce" src="./voce.mp3" preload="auto" playsinline></audio>
+
+  <!-- Scena AR -->
+  <a-scene
+    mindar-image="imageTargetSrc: ./targets.mind; autoStart: false; filterMinCF: 0.0001; filterBeta: 0.001"
+    color-space="sRGB"
+    renderer="colorManagement: true; antialias: true"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <a-entity light="type: ambient; intensity: 0.9"></a-entity>
+    <a-entity light="type: directional; intensity: 1.4" position="0.5 1 1.5"></a-entity>
+
+    <!-- targetIndex 0 = prima imagine încărcată în compilator -->
+    <a-entity id="tinta" mindar-image-target="targetIndex: 0">
+
+      <!-- "corp" apare cu un mic salt și plutește ușor deasupra paginii.
+           rotation="90 0 0" îl ridică în picioare pe pagină.
+           Dacă vreți modelul culcat pe pagină, puneți rotation="0 0 0". -->
+      <!-- Poziția pe pagină: x = dreapta/stânga, y = sus/jos (1 = lățimea paginii).
+           "0.24 0.22 0" = deasupra desenului cu procesorul din dreapta sus. -->
+      <a-entity position="0.24 0.22 0">
+      <a-entity id="corp"
+        rotation="90 0 0"
+        scale="0.01 0.01 0.01"
+        animation__apare="property: scale; to: 1 1 1; dur: 600; easing: easeOutBack; startEvents: apare"
+        animation__pluteste="property: position; from: 0 0 0; to: 0 0 0.04; dir: alternate; loop: true; dur: 1400; easing: easeInOutSine">
+
+        <!-- "vorbitor" pulsează discret cât timp se aude vocea -->
+        <a-entity id="vorbitor"
+          animation__vorbeste="property: scale; from: 1 1 1; to: 1.035 1.035 1.035; dir: alternate; loop: true; dur: 170; easing: easeInOutSine; startEvents: vorbeste; pauseEvents: taci; resumeEvents: vorbeste">
+
+          <!-- Modelul 3D. marime = cât de mare e față de imaginea din carte (1 = cât lățimea paginii) -->
+          <a-entity gltf-model="./procesor.glb"
+            potrivire-model="marime: 0.45"
+            animation-mixer="clip: *; loop: repeat"></a-entity>
+        </a-entity>
+      </a-entity>
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    // Aduce orice model la aceeași mărime și îl așază cu "picioarele" pe pagină.
+    AFRAME.registerComponent('potrivire-model', {
+      schema: { marime: { default: 0.7 } },
+      init() {
+        this.el.addEventListener('model-loaded', () => {
+          const model = this.el.getObject3D('mesh');
+          const parinte = model.parent;
+          parinte.remove(model);            // măsurăm modelul singur, fără scenă
+          model.updateMatrixWorld(true);
+          const cutie = new THREE.Box3().setFromObject(model);
+          parinte.add(model);
+
+          const dim = new THREE.Vector3(); cutie.getSize(dim);
+          const centru = new THREE.Vector3(); cutie.getCenter(centru);
+          const s = this.data.marime / (Math.max(dim.x, dim.y, dim.z) || 1);
+          model.scale.multiplyScalar(s);
+          model.position.set(-centru.x * s, -cutie.min.y * s, -centru.z * s);
+        });
+      }
+    });
+
+    const scena   = document.querySelector('a-scene');
+    const voce    = document.getElementById('voce');
+    const tinta   = document.getElementById('tinta');
+    const corp    = document.getElementById('corp');
+    const vorbitor = document.getElementById('vorbitor');
+    const repeta  = document.getElementById('repeta');
+    let aAparut = false;
+
+    document.getElementById('start').addEventListener('click', async () => {
+      // Deblocăm sunetul cu atingerea utilizatorului
+      try { voce.muted = true; await voce.play(); voce.pause(); voce.currentTime = 0; } catch (e) {}
+      voce.muted = false;
+
+      document.getElementById('ecran-start').style.display = 'none';
+      const porneste = () => scena.systems['mindar-image-system'].start();
+      if (scena.hasLoaded) porneste(); else scena.addEventListener('loaded', porneste);
+    });
+
+    scena.addEventListener('arError', () => {
+      document.getElementById('ecran-start').style.display = 'flex';
+      document.getElementById('mesaj-eroare').style.display = 'block';
+    });
+
+    // Camera a găsit pagina
+    tinta.addEventListener('targetFound', () => {
+      if (!aAparut) { corp.emit('apare'); aAparut = true; }
+      if (voce.ended) voce.currentTime = 0;
+      voce.play().catch(() => {});
+      repeta.style.display = 'block';
+    });
+
+    // Camera a pierdut pagina
+    tinta.addEventListener('targetLost', () => voce.pause());
+
+    repeta.addEventListener('click', () => { voce.currentTime = 0; voce.play().catch(() => {}); });
+
+    const taci = () => { vorbitor.emit('taci'); vorbitor.setAttribute('scale', '1 1 1'); };
+    voce.addEventListener('play',  () => vorbitor.emit('vorbeste'));
+    voce.addEventListener('pause', taci);
+    voce.addEventListener('ended', taci);
+  </script>
+</body>
+</html>
