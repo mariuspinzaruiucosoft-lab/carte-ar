@@ -21,7 +21,8 @@
       --aur: #f0c04a;        /* contactele aurii */
       --serigrafie: #f7f5e8; /* scrisul alb de pe placă */
     }
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+    /* Fără fundal pe body, altfel acoperă imaginea camerei */
+    html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
     body { font-family: "Baloo 2", "Trebuchet MS", system-ui, sans-serif; }
 
     /* ---------- Ecranul de pornire ---------- */
@@ -102,13 +103,13 @@
     <a-entity id="tinta" mindar-image-target="targetIndex: 0">
 
       <!-- "corp" apare cu un mic salt și plutește ușor deasupra paginii.
-           rotation="90 0 0" îl ridică în picioare pe pagină.
+           rotation="70 0 0" îl ridică pe pagină, ușor lăsat pe spate spre cititor.
            Dacă vreți modelul culcat pe pagină, puneți rotation="0 0 0". -->
       <!-- Poziția pe pagină: x = dreapta/stânga, y = sus/jos (1 = lățimea paginii).
            "0.24 0.22 0" = deasupra desenului cu procesorul din dreapta sus. -->
       <a-entity position="0.24 0.22 0">
       <a-entity id="corp"
-        rotation="90 0 0"
+        rotation="70 0 0"
         scale="0.01 0.01 0.01"
         animation__apare="property: scale; to: 1 1 1; dur: 600; easing: easeOutBack; startEvents: apare"
         animation__pluteste="property: position; from: 0 0 0; to: 0 0 0.04; dir: alternate; loop: true; dur: 1400; easing: easeInOutSine">
